@@ -1402,7 +1402,7 @@ btree_search_page_root(struct btree *bt, struct mpage *root, struct btval *key,
 		if (key)
 			DPRINTF("following index %u for key %.*s",
 			    i, (int)key->size, (char *)key->data);
-		assert(i >= 0 && i < NUMKEYS(mp));
+		assert((int)i >= 0 && i < NUMKEYS(mp));
 		node = NODEPTR(mp, i);
 
 		if (cursor)
