@@ -49,7 +49,7 @@
 			     fprintf(stderr, __VA_ARGS__); \
 			     fprintf(stderr, "\n"); } while(0)
 #else
-# define DPRINTF(...)
+# define DPRINTF(...)	do { } while(0)
 #endif
 
 #define PAGESIZE	 4096
@@ -258,13 +258,13 @@ static struct node	*btree_search_node(struct btree *bt, struct mpage *mp,
 static int		 btree_add_node(struct btree *bt, struct mpage *mp,
 			    indx_t indx, struct btval *key, struct btval *data,
 			    pgno_t pgno, uint8_t flags);
-static void		 btree_del_node(struct btree *bt, struct mpage *mp,
+static void		 btree_del_node(struct mpage *mp,
 			    indx_t indx);
 static int		 btree_read_data(struct btree *bt, struct mpage *mp,
 			    struct node *leaf, struct btval *data);
 
 static int		 btree_rebalance(struct btree *bt, struct mpage *mp);
-static int		 btree_update_key(struct btree *bt, struct mpage *mp,
+static int		 btree_update_key(struct mpage *mp,
 			    indx_t indx, struct btval *key);
 static int		 btree_adjust_prefix(struct btree *bt,
 			    struct mpage *src, int delta);
@@ -2032,7 +2032,7 @@ btree_add_node(struct btree *bt, struct mpage *mp, indx_t indx,
 }
 
 static void
-btree_del_node(struct btree *bt, struct mpage *mp, indx_t indx)
+btree_del_node(struct mpage *mp, indx_t indx)
 {
 	unsigned int	 sz;
 	indx_t		 i, j, numkeys, ptr;
@@ -2111,7 +2111,7 @@ btree_cursor_close(struct cursor *cursor)
 }
 
 static int
-btree_update_key(struct btree *bt, struct mpage *mp, indx_t indx,
+btree_update_key(struct mpage *mp, indx_t indx,
     struct btval *key)
 {
 	indx_t			 ptr, i, numkeys;
@@ -2190,7 +2190,7 @@ btree_adjust_prefix(struct btree *bt, struct mpage *src, int delta)
 		}
 		key.size = tmpkey.len;
 		key.data = tmpkey.str;
-		if (btree_update_key(bt, src, i, &key) != BT_SUCCESS)
+		if (btree_update_key(src, i, &key) != BT_SUCCESS)
 			return BT_FAIL;
 	}
 
@@ -2291,7 +2291,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 
 	/* Delete the node from the source page.
 	 */
-	btree_del_node(bt, src, srcindx);
+	btree_del_node(src, srcindx);
 
 	/* Update the parent separators.
 	 */
@@ -2303,7 +2303,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 
 		DPRINTF("update separator for source page %u to [%.*s]",
 		    src->pgno, (int)key.size, (char *)key.data);
-		if (btree_update_key(bt, src->parent, src->parent_index,
+		if (btree_update_key(src->parent, src->parent_index,
 		    &key) != BT_SUCCESS)
 			return BT_FAIL;
 	}
@@ -2311,7 +2311,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 	if (srcindx == 0 && IS_BRANCH(src)) {
 		struct btval	 nullkey;
 		nullkey.size = 0;
-		assert(btree_update_key(bt, src, 0, &nullkey) == BT_SUCCESS);
+		assert(btree_update_key(src, 0, &nullkey) == BT_SUCCESS);
 	}
 
 	if (dstindx == 0 && dst->parent_index != 0) {
@@ -2322,7 +2322,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 
 		DPRINTF("update separator for destination page %u to [%.*s]",
 		    dst->pgno, (int)key.size, (char *)key.data);
-		if (btree_update_key(bt, dst->parent, dst->parent_index,
+		if (btree_update_key(dst->parent, dst->parent_index,
 		    &key) != BT_SUCCESS)
 			return BT_FAIL;
 	}
@@ -2330,7 +2330,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 	if (dstindx == 0 && IS_BRANCH(dst)) {
 		struct btval	 nullkey;
 		nullkey.size = 0;
-		assert(btree_update_key(bt, dst, 0, &nullkey) == BT_SUCCESS);
+		assert(btree_update_key(dst, 0, &nullkey) == BT_SUCCESS);
 	}
 
 	/* We can get a new page prefix here!
@@ -2443,10 +2443,10 @@ btree_merge(struct btree *bt, struct mpage *src, struct mpage *dst)
 
 	/* Unlink the src page from parent.
 	 */
-	btree_del_node(bt, src->parent, src->parent_index);
+	btree_del_node(src->parent, src->parent_index);
 	if (src->parent_index == 0) {
 		key.size = 0;
-		if (btree_update_key(bt, src->parent, 0, &key) != BT_SUCCESS)
+		if (btree_update_key(src->parent, 0, &key) != BT_SUCCESS)
 			return BT_FAIL;
 
 		pfxlen = src->prefix.len;
@@ -2618,7 +2618,7 @@ btree_txn_del(struct btree *bt, struct btree_txn *txn,
 	if (data && (rc = btree_read_data(bt, NULL, leaf, data)) != BT_SUCCESS)
 		goto done;
 
-	btree_del_node(bt, mp, ki);
+	btree_del_node(mp, ki);
 	bt->meta.entries--;
 	rc = btree_rebalance(bt, mp);
 	if (rc != BT_SUCCESS)
@@ -2938,7 +2938,7 @@ btree_txn_put(struct btree *bt, struct btree_txn *txn,
 				rc = BT_FAIL;
 				goto done;
 			}
-			btree_del_node(bt, mp, ki);
+			btree_del_node(mp, ki);
 		}
 		if (leaf == NULL) {		/* append if not found */
 			ki = NUMKEYS(mp);
@@ -3077,7 +3077,10 @@ btree_compact(struct btree *bt)
 	if ((txn = btree_txn_begin(bt, 0)) == NULL)
 		return BT_FAIL;
 
-	asprintf(&compact_path, "%s.compact.XXXXXX", bt->path);
+	if (asprintf(&compact_path, "%s.compact.XXXXXX", bt->path) == -1) {
+		btree_txn_abort(txn);
+		return BT_FAIL;
+	}
 	fd = mkstemp(compact_path);
 	if (fd == -1) {
 		free(compact_path);
