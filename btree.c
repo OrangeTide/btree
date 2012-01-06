@@ -1182,6 +1182,8 @@ btree_close(struct btree *bt)
 		DPRINTF("ref is zero, closing btree %p", bt);
 		close(bt->fd);
 		mpage_flush(bt);
+		free(bt->lru_queue);
+		free(bt->path);
 		free(bt->page_cache);
 		free(bt);
 	} else
