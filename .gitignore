@@ -1,0 +1,20 @@
+.*.swp
+*~
+*.o
+*.a
+*.so
+*.exe
+# autotools
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.guess
+config.sub
+configure
+depcomp
+install-sh
+missing
+.deps/
+Makefile
+config.log
+config.status
