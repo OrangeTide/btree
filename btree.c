@@ -390,7 +390,7 @@ common_prefix(struct btree *bt, struct btkey *min, struct btkey *max,
 
 		assert(n <= (int)sizeof(pfx->str));
 		pfx->len = n;
-		bcopy(p2 + 1, pfx->str, n);
+		memcpy(pfx->str, p2 + 1, n);
 	} else {
 		p1 = min->str;
 		p2 = max->str;
@@ -405,7 +405,7 @@ common_prefix(struct btree *bt, struct btkey *min, struct btkey *max,
 
 		assert(n <= (int)sizeof(pfx->str));
 		pfx->len = n;
-		bcopy(max->str, pfx->str, n);
+		memcpy(pfx->str, max->str, n);
 	}
 }
 
@@ -455,7 +455,7 @@ btval_reset(struct btval *btv)
 			btv->mp->ref--;
 		if (btv->free_data)
 			free(btv->data);
-		bzero(btv, sizeof(*btv));
+		memset(btv, 0, sizeof(*btv));
 	}
 }
 
@@ -533,8 +533,8 @@ mpage_copy(struct btree *bt, struct mpage *mp)
 		free(copy);
 		return NULL;
 	}
-	bcopy(mp->page, copy->page, bt->head.psize);
-	bcopy(&mp->prefix, &copy->prefix, sizeof(mp->prefix));
+	memcpy(copy->page, mp->page, bt->head.psize);
+	memcpy(&copy->prefix, &mp->prefix, sizeof(mp->prefix));
 	copy->parent = mp->parent;
 	copy->parent_index = mp->parent_index;
 	copy->pgno = mp->pgno;
@@ -865,7 +865,7 @@ btree_write_header(struct btree *bt, int fd)
 	h->magic = BT_MAGIC;
 	h->version = BT_VERSION;
 	h->psize = psize;
-	bcopy(h, &bt->head, sizeof(*h));
+	memcpy(&bt->head, h, sizeof(*h));
 
 	rc = write(fd, p, bt->head.psize);
 	free(p);
@@ -923,7 +923,7 @@ btree_read_header(struct btree *bt)
 		return -1;
 	}
 
-	bcopy(h, &bt->head, sizeof(*h));
+	memcpy(&bt->head, h, sizeof(*h));
 	return 0;
 }
 
@@ -951,7 +951,7 @@ btree_write_meta(struct btree *bt, pgno_t root, unsigned int flags)
 
 	/* Copy the meta data changes to the new meta page. */
 	meta = METADATA(mp->page);
-	bcopy(&bt->meta, meta, sizeof(*meta));
+	memcpy(meta, &bt->meta, sizeof(*meta));
 
 	rc = write(bt->fd, mp->page, bt->head.psize);
 	mp->dirty = 0;
@@ -1069,7 +1069,7 @@ btree_read_meta(struct btree *bt, pgno_t *p_next)
 				return BT_FAIL;
 			} else {
 				/* Make copy of last meta page. */
-				bcopy(meta, &bt->meta, sizeof(bt->meta));
+				memcpy(&bt->meta, meta, sizeof(bt->meta));
 				return BT_SUCCESS;
 			}
 		}
@@ -1212,7 +1212,7 @@ btree_search_node(struct btree *bt, struct mpage *mp, struct btval *key,
 
 	assert(NUMKEYS(mp) > 0);
 
-	bzero(&nodekey, sizeof(nodekey));
+	memset(&nodekey, 0, sizeof(nodekey));
 
 	low = IS_LEAF(mp) ? 0 : 1;
 	high = NUMKEYS(mp) - 1;
@@ -1318,11 +1318,11 @@ concat_prefix(struct btree *bt, char *s1, size_t n1, char *s2, size_t n2,
 {
 	assert(*cn >= n1 + n2);
 	if (F_ISSET(bt->flags, BT_REVERSEKEY)) {
-		bcopy(s2, cs, n2);
-		bcopy(s1, cs + n2, n1);
+		memcpy(cs, s2, n2);
+		memcpy(cs + n2, s1, n1);
 	} else {
-		bcopy(s1, cs, n1);
-		bcopy(s2, cs + n1, n2);
+		memcpy(cs, s1, n1);
+		memcpy(cs + n1, s2, n2);
 	}
 	*cn = n1 + n2;
 }
@@ -1362,7 +1362,7 @@ find_common_prefix(struct btree *bt, struct mpage *mp)
 		common_prefix(bt, &lprefix, &uprefix, &mp->prefix);
 	}
 	else if (mp->parent)
-		bcopy(&mp->parent->prefix, &mp->prefix, sizeof(mp->prefix));
+		memcpy(&mp->prefix, &mp->parent->prefix, sizeof(mp->prefix));
 
 	DPRINTF("found common prefix [%.*s] (len %zu) for page %u",
 	    (int)mp->prefix.len, mp->prefix.str, mp->prefix.len, mp->pgno);
@@ -1503,7 +1503,7 @@ btree_read_data(struct btree *bt, struct mpage *mp, struct node *leaf,
 	size_t		 sz = 0;
 	pgno_t		 pgno;
 
-	bzero(data, sizeof(*data));
+	memset(data, 0, sizeof(*data));
 	max = bt->head.psize - PAGEHDRSZ;
 
 	if (!F_ISSET(leaf->flags, F_BIGDATA)) {
@@ -1512,7 +1512,7 @@ btree_read_data(struct btree *bt, struct mpage *mp, struct node *leaf,
 			if (mp == NULL) {
 				if ((data->data = malloc(data->size)) == NULL)
 					return BT_FAIL;
-				bcopy(NODEDATA(leaf), data->data, data->size);
+				memcpy(data->data, NODEDATA(leaf), data->size);
 				data->free_data = 1;
 				data->mp = NULL;
 			} else {
@@ -1533,7 +1533,7 @@ btree_read_data(struct btree *bt, struct mpage *mp, struct node *leaf,
 	data->size = leaf->n_dsize;
 	data->free_data = 1;
 	data->mp = NULL;
-	bcopy(NODEDATA(leaf), &pgno, sizeof(pgno));
+	memcpy(&pgno, NODEDATA(leaf), sizeof(pgno));
 	for (sz = 0; sz < data->size; ) {
 		if ((omp = btree_get_mpage(bt, pgno)) == NULL ||
 		    !F_ISSET(omp->page->flags, P_OVERFLOW)) {
@@ -1545,7 +1545,7 @@ btree_read_data(struct btree *bt, struct mpage *mp, struct node *leaf,
 		psz = data->size - sz;
 		if (psz > max)
 			psz = max;
-		bcopy(omp->page->ptrs, (char *)data->data + sz, psz);
+		memcpy((char *)data->data + sz, omp->page->ptrs, psz);
 		sz += psz;
 		pgno = omp->page->p_next_pgno;
 	}
@@ -1929,7 +1929,7 @@ btree_write_overflow_data(struct btree *bt, struct page *p, struct btval *data)
 		if (sz > max)
 			sz = max;
 		DPRINTF("copying %zu bytes to overflow page %u", sz, p->pgno);
-		bcopy((char *)data->data + done, p->ptrs, sz);
+		memcpy(p->ptrs, (char *)data->data + done, sz);
 		done += sz;
 	}
 
@@ -2008,19 +2008,19 @@ btree_add_node(struct btree *bt, struct mpage *mp, indx_t indx,
 		node->n_pgno = pgno;
 
 	if (key)
-		bcopy(key->data, NODEKEY(node), key->size);
+		memcpy(NODEKEY(node), key->data, key->size);
 
 	if (IS_LEAF(mp)) {
 		assert(key);
 		if (ofp == NULL) {
 			if (F_ISSET(flags, F_BIGDATA))
-				bcopy(data->data, node->data + key->size,
+				memcpy(node->data + key->size, data->data,
 				    sizeof(pgno_t));
 			else
-				bcopy(data->data, node->data + key->size,
+				memcpy(node->data + key->size, data->data,
 				    data->size);
 		} else {
-			bcopy(&ofp->pgno, node->data + key->size,
+			memcpy(node->data + key->size, &ofp->pgno,
 			    sizeof(pgno_t));
 			if (btree_write_overflow_data(bt, ofp->page,
 			    data) == BT_FAIL)
@@ -2064,7 +2064,7 @@ btree_del_node(struct mpage *mp, indx_t indx)
 	}
 
 	base = (char *)mp->page + mp->page->upper;
-	bcopy(base, base + sz, ptr - mp->page->upper);
+	memcpy(base + sz, base, ptr - mp->page->upper);
 
 	mp->page->lower -= sizeof(indx_t);
 	mp->page->upper += sz;
@@ -2143,14 +2143,14 @@ btree_update_key(struct mpage *mp, indx_t indx,
 
 		base = (char *)mp->page + mp->page->upper;
 		len = ptr - mp->page->upper + NODESIZE;
-		bcopy(base, base - delta, len);
+		memcpy(base - delta, base, len);
 		mp->page->upper -= delta;
 
 		node = NODEPTR(mp, indx);
 		node->ksize = key->size;
 	}
 
-	bcopy(key->data, NODEKEY(node), key->size);
+	memcpy(NODEKEY(node), key->data, key->size);
 
 	return BT_SUCCESS;
 }
@@ -2172,19 +2172,19 @@ btree_adjust_prefix(struct btree *bt, struct mpage *src, int delta)
 		tmpkey.len = node->ksize - delta;
 		if (delta > 0) {
 			if (F_ISSET(bt->flags, BT_REVERSEKEY))
-				bcopy(NODEKEY(node), tmpkey.str, tmpkey.len);
+				memcpy(tmpkey.str, NODEKEY(node), tmpkey.len);
 			else
-				bcopy((char *)NODEKEY(node) + delta, tmpkey.str,
+				memcpy(tmpkey.str, (char *)NODEKEY(node) + delta,
 				    tmpkey.len);
 		} else {
 			if (F_ISSET(bt->flags, BT_REVERSEKEY)) {
-				bcopy(NODEKEY(node), tmpkey.str, node->ksize);
-				bcopy(src->prefix.str, tmpkey.str + node->ksize,
+				memcpy(tmpkey.str, NODEKEY(node), node->ksize);
+				memcpy(tmpkey.str + node->ksize, src->prefix.str,
 				    -delta);
 			} else {
 				bcopy(src->prefix.str + src->prefix.len + delta,
 				    tmpkey.str, -delta);
-				bcopy(NODEKEY(node), tmpkey.str - delta,
+				memcpy(tmpkey.str - delta, NODEKEY(node),
 				    node->ksize);
 			}
 		}
@@ -2246,13 +2246,13 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 	 * destination page must expand its prefix on all its nodes.
 	 */
 	srckey.len = srcnode->ksize;
-	bcopy(NODEKEY(srcnode), srckey.str, srckey.len);
+	memcpy(srckey.str, NODEKEY(srcnode), srckey.len);
 	common_prefix(bt, &srckey, &dst->prefix, &tmpkey);
 	if (tmpkey.len != dst->prefix.len) {
 		if (btree_adjust_prefix(bt, dst,
 		    tmpkey.len - dst->prefix.len) != BT_SUCCESS)
 			return BT_FAIL;
-		bcopy(&tmpkey, &dst->prefix, sizeof(tmpkey));
+		memcpy(&dst->prefix, &tmpkey, sizeof(tmpkey));
 	}
 
 	if (srcindx == 0 && IS_BRANCH(src)) {
@@ -2267,7 +2267,7 @@ btree_move_node(struct btree *bt, struct mpage *src, indx_t srcindx,
 		    (int)srckey.len, srckey.str, low->pgno);
 	} else {
 		srckey.len = srcnode->ksize;
-		bcopy(NODEKEY(srcnode), srckey.str, srcnode->ksize);
+		memcpy(srckey.str, NODEKEY(srcnode), srcnode->ksize);
 	}
 	find_common_prefix(bt, src);
 
@@ -2402,7 +2402,7 @@ btree_merge(struct btree *bt, struct mpage *src, struct mpage *dst)
 		if (btree_adjust_prefix(bt, dst,
 		    dstpfx.len - dst->prefix.len) != BT_SUCCESS)
 			return BT_FAIL;
-		bcopy(&dstpfx, &dst->prefix, sizeof(dstpfx));
+		memcpy(&dst->prefix, &dstpfx, sizeof(dstpfx));
 	}
 
 	/* Move all nodes from src to dst.
@@ -2749,9 +2749,9 @@ btree_split(struct btree *bt, struct mpage **mpp, unsigned int *newindxp,
 	/* Move half of the keys to the right sibling. */
 	if ((copy = malloc(bt->head.psize)) == NULL)
 		return BT_FAIL;
-	bcopy(mp->page, copy, bt->head.psize);
+	memcpy(copy, mp->page, bt->head.psize);
 	assert(mp->ref == 0);				/* XXX */
-	bzero(&mp->page->ptrs, bt->head.psize - PAGEHDRSZ);
+	memset(&mp->page->ptrs, 0, bt->head.psize - PAGEHDRSZ);
 	mp->page->lower = PAGEHDRSZ;
 	mp->page->upper = bt->head.psize;
 
@@ -2759,7 +2759,7 @@ btree_split(struct btree *bt, struct mpage **mpp, unsigned int *newindxp,
 
 	/* First find the separating key between the split pages.
 	 */
-	bzero(&sepkey, sizeof(sepkey));
+	memset(&sepkey, 0, sizeof(sepkey));
 	if (newindx == split_indx) {
 		sepkey.size = newkey->size;
 		sepkey.data = newkey->data;
@@ -3008,7 +3008,7 @@ btree_compact_tree(struct btree *bt, pgno_t pgno, struct btree *btc)
 		return P_INVALID;
 	if ((p = malloc(bt->head.psize)) == NULL)
 		return P_INVALID;
-	bcopy(mp->page, p, bt->head.psize);
+	memcpy(p, mp->page, bt->head.psize);
 
         /* Go through all nodes in the (copied) page and update the
          * page pointers.
@@ -3026,13 +3026,13 @@ btree_compact_tree(struct btree *bt, pgno_t pgno, struct btree *btc)
 		for (i = 0; i < NUMKEYSP(p); i++) {
 			node = NODEPTRP(p, i);
 			if (F_ISSET(node->flags, F_BIGDATA)) {
-				bcopy(NODEDATA(node), &next, sizeof(next));
+				memcpy(&next, NODEDATA(node), sizeof(next));
 				next = btree_compact_tree(bt, next, btc);
 				if (next == P_INVALID) {
 					free(p);
 					return P_INVALID;
 				}
-				bcopy(&next, NODEDATA(node), sizeof(next));
+				memcpy(NODEDATA(node), &next, sizeof(next));
 			}
 		}
 	} else if (F_ISSET(p->flags, P_OVERFLOW)) {
@@ -3090,7 +3090,7 @@ btree_compact(struct btree *bt)
 
 	if ((btc = btree_open_fd(fd, 0)) == NULL)
 		goto failed;
-	bcopy(&bt->meta, &btc->meta, sizeof(bt->meta));
+	memcpy(&btc->meta, &bt->meta, sizeof(bt->meta));
 	btc->meta.revisions = 0;
 
 	if ((txnc = btree_txn_begin(btc, 0)) == NULL)
