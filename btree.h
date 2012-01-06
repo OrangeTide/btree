@@ -19,6 +19,8 @@
 #ifndef _btree_h_
 #define _btree_h_
 
+#include <time.h>
+#include <sys/types.h>
 #include <openssl/sha.h>
 
 struct mpage;
