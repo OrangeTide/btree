@@ -8,11 +8,13 @@ include_HEADERS = btree.h
 
 man3_MANS = btree.3
 
-noinst_PROGRAMS = btest
+noinst_PROGRAMS = btest test_btree
 
 btest_SOURCES = btest.c
-
 btest_LDADD = libbtree.a -lssl
+
+test_btree_SOURCES = test_btree.c
+test_btree_LDADD = libbtree.a -lssl
 
 AM_CFLAGS = -Wall -W -g -std=c89 -D_XOPEN_SOURCE=700
 AM_CFLAGS += -D_GNU_SOURCE # asprintf
