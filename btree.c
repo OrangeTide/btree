@@ -16,8 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "compat.h"
-
 #include <sys/types.h>
 #include <sys/tree.h>
 #include <sys/stat.h>
@@ -41,6 +39,11 @@
 #include <unistd.h>
 
 #include "btree.h"
+
+/* from compat.h */
+#ifndef __packed
+#define __packed __attribute__ ((__packed__))
+#endif
 
 /* #define DEBUG */
 
@@ -119,7 +122,7 @@ struct bt_meta {				/* meta (footer) page content */
 	uint32_t	 revisions;
 	uint32_t	 depth;
 	uint64_t	 entries;
-	unsigned char	 hash[SHA_DIGEST_LENGTH];
+	unsigned char	 hash[SHA1_DIGEST_LENGTH];
 } __packed;
 
 struct btkey {
@@ -947,7 +950,7 @@ btree_write_meta(struct btree *bt, pgno_t root, unsigned int flags)
 	bt->meta.flags = flags;
 	bt->meta.created_at = time(0);
 	bt->meta.revisions++;
-	SHA1((unsigned char *)&bt->meta, METAHASHLEN, bt->meta.hash);
+	sha1((unsigned char *)&bt->meta, METAHASHLEN, bt->meta.hash);
 
 	/* Copy the meta data changes to the new meta page. */
 	meta = METADATA(mp->page);
@@ -976,7 +979,7 @@ static int
 btree_is_meta_page(struct page *p)
 {
 	struct bt_meta	*m;
-	unsigned char	 hash[SHA_DIGEST_LENGTH];
+	unsigned char	 hash[SHA1_DIGEST_LENGTH];
 
 	m = METADATA(p);
 	if (!F_ISSET(p->flags, P_META)) {
@@ -991,8 +994,8 @@ btree_is_meta_page(struct page *p)
 		return 0;
 	}
 
-	SHA1((unsigned char *)m, METAHASHLEN, hash);
-	if (bcmp(hash, m->hash, SHA_DIGEST_LENGTH) != 0) {
+	sha1((unsigned char *)m, METAHASHLEN, hash);
+	if (bcmp(hash, m->hash, SHA1_DIGEST_LENGTH) != 0) {
 		DPRINTF("page %d has an invalid digest", p->pgno);
 		errno = EINVAL;
 		return 0;

@@ -21,7 +21,7 @@
 
 #include <time.h>
 #include <sys/types.h>
-#include <openssl/sha.h>
+#include "sha1tiny.h"
 
 struct mpage;
 struct cursor;

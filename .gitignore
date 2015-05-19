@@ -18,3 +18,9 @@ missing
 Makefile
 config.log
 config.status
+
+# executables and test outputs
+btest
+test_btree
+test_sha1tiny
+test.db
